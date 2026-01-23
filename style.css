@@ -1,13 +1,20 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
   background: url(logo.jpg) no-repeat center;
   background-size: cover;
+  background-attachment: fixed;
   font-weight: 700;
   backdrop-filter: blur(4px);
-  padding-left: 10em;
-  padding-right: 10em;
+  padding-left: 10%;
+  padding-right: 10%;
   overflow-x: hidden;
   font-family: "Times New Roman", Times, serif;
-  line-height: 20px;
+  line-height: 1.5;
 }
 /* FOR HERO SECTION */
 #Hero {
@@ -16,12 +23,14 @@ body {
 }
 
 #Hero h1 {
-  font-size: 5em;
+  font-size: clamp(2rem, 8vw, 5em);
 }
 
 #Hero p,
 pre {
-  font-size: 1.6em;
+  font-size: clamp(1rem, 4vw, 1.6em);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 /* END */
 
@@ -40,7 +49,7 @@ pre {
 }
 
 #About-us h2 {
-  font-size: 2em;
+  font-size: clamp(1.5rem, 5vw, 2em);
 }
 /*END*/
 
@@ -52,8 +61,9 @@ pre {
 
 #about-anime li {
   list-style-type: none;
-  font-size: 20px;
-  line-height: 30px;
+  font-size: clamp(1rem, 3vw, 20px);
+  line-height: 1.8;
+  margin: 0.5rem 0;
 }
 
 /*END*/
@@ -91,4 +101,191 @@ img:hover {
   animation: appear ease 2s;
   animation-timeline: view();
   animation-range: entry 0;
+}
+
+/* GENRE BOX RESPONSIVE */
+#genre-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: center;
+}
+
+#genre-box span {
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  font-size: clamp(0.75rem, 2vw, 1rem);
+  display: inline-block;
+}
+
+/* BOARD OF DIRECTORS RESPONSIVE */
+#BOD {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2rem;
+}
+
+#AJ,
+#Ichigo {
+  flex: 1;
+  min-width: 200px;
+  max-width: 350px;
+  text-align: center;
+}
+
+#AJ img,
+#Ichigo img {
+  width: 100%;
+  height: auto;
+  max-height: 300px;
+}
+
+/* SECTIONS PADDING */
+section {
+  margin: 2rem 0;
+  padding: 1.5rem;
+}
+
+/* MEDIA QUERIES */
+@media screen and (max-width: 1024px) {
+  body {
+    padding-left: 5%;
+    padding-right: 5%;
+  }
+
+  #Hero h1 {
+    font-size: clamp(1.8rem, 6vw, 4em);
+  }
+
+  #Hero p,
+  pre {
+    font-size: clamp(0.9rem, 3.5vw, 1.4em);
+  }
+
+  #About-us h2 {
+    font-size: clamp(1.3rem, 4vw, 1.8em);
+  }
+}
+
+@media screen and (max-width: 768px) {
+  body {
+    padding-left: 3%;
+    padding-right: 3%;
+  }
+
+  #Hero h1 {
+    font-size: clamp(1.5rem, 5vw, 3em);
+  }
+
+  #Hero p,
+  pre {
+    font-size: clamp(0.85rem, 3vw, 1.2em);
+  }
+
+  #About-us {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  #About-us h2 {
+    font-size: clamp(1.2rem, 3.5vw, 1.6em);
+  }
+
+  #about-anime li {
+    font-size: clamp(0.9rem, 2.5vw, 18px);
+  }
+
+  #genre-box {
+    gap: 0.3rem;
+  }
+
+  #genre-box span {
+    padding: 0.4rem 0.8rem;
+    font-size: clamp(0.7rem, 1.8vw, 0.9rem);
+  }
+
+  #AJ,
+  #Ichigo {
+    flex: 1 1 45%;
+    min-width: 150px;
+  }
+
+  #AJ img,
+  #Ichigo img {
+    max-height: 250px;
+  }
+
+  section {
+    margin: 1.5rem 0;
+    padding: 1rem;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  body {
+    padding-left: 1rem;
+    padding-right: 1rem;
+    background-attachment: scroll;
+  }
+
+  #Hero h1 {
+    font-size: clamp(1.2rem, 6vw, 2.5em);
+    margin-bottom: 0.5rem;
+  }
+
+  #Hero p,
+  pre {
+    font-size: clamp(0.8rem, 3.5vw, 1rem);
+    line-height: 1.4;
+  }
+
+  #About-us {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+
+  #About-us h2 {
+    font-size: clamp(1rem, 3vw, 1.4em);
+    margin-top: 1rem;
+  }
+
+  #about-anime li {
+    font-size: clamp(0.8rem, 2.5vw, 16px);
+  }
+
+  #genre-box {
+    gap: 0.25rem;
+  }
+
+  #genre-box span {
+    padding: 0.3rem 0.6rem;
+    font-size: clamp(0.65rem, 1.5vw, 0.8rem);
+  }
+
+  #BOD {
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  #AJ,
+  #Ichigo {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+
+  #AJ img,
+  #Ichigo img {
+    max-height: 200px;
+  }
+
+  section {
+    margin: 1rem 0;
+    padding: 0.75rem;
+  }
+
+  pre {
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
 }

@@ -393,7 +393,8 @@ img:hover {
 #The-Father,
 #The-Big-Three,
 #BOD,
-#logo {
+#logo,
+#Forms {
   animation: appear ease 2s;
   animation-timeline: view();
   animation-range: entry 0;

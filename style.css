@@ -132,6 +132,15 @@ html {
   animation: bankai 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+@keyframes fadeOutTop {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 @keyframes zoomIn {
   from {
     transform: translate(-50%, -50%) scale(0.8);
@@ -184,6 +193,12 @@ html {
   }
 }
 
+/* FADE OUT TOP EFFECT FOR VIEWPORT EXIT */
+.fade-out-top {
+  animation: fadeOutTop 0.5s ease-out forwards !important;
+  pointer-events: none;
+}
+
 body {
   background: url(logo.jpg) no-repeat center;
   background-size: cover;
@@ -206,14 +221,16 @@ body {
   backdrop-filter: blur(10px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   z-index: 1000;
-  padding: 0 10%;
+  width: 100vw;
+  margin-left: calc(-50vw + 50%);
+  padding: 0;
 }
 
 .navbar-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem 0;
+  padding: 1rem 10%;
 }
 
 .logo {
@@ -261,11 +278,11 @@ body {
 /* HEADER RESPONSIVE */
 @media (max-width: 768px) {
   #navbar {
-    padding: 0 5%;
+    padding: 0;
   }
 
   .navbar-container {
-    padding: 0.8rem 0;
+    padding: 0.8rem 5%;
   }
 
   .logo {

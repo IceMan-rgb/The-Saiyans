@@ -1,7 +1,58 @@
 // Welcome Notification
 document.addEventListener("DOMContentLoaded", function () {
   showNotification();
+
+  // Initialize fade-out effect after a brief delay to allow DOM to fully settle
+  setTimeout(() => {
+    initFadeOutOnScroll();
+  }, 100);
 });
+
+// Fade Out Effect for Elements Leaving Top of Viewport
+function initFadeOutOnScroll() {
+  const options = {
+    root: null,
+    rootMargin: "0px 0px 0px 0px",
+    threshold: [0, 0.1, 0.5],
+  };
+
+  const observer = new IntersectionObserver(function (entries) {
+    entries.forEach((entry) => {
+      // Skip notification elements to avoid circular issues
+      if (
+        entry.target.classList.contains("notification") ||
+        entry.target.classList.contains("notification-backdrop")
+      ) {
+        return;
+      }
+
+      // Get the element's position relative to viewport
+      const rect = entry.boundingClientRect;
+      const isAboveViewport = rect.bottom < 0;
+
+      if (isAboveViewport) {
+        // Element is above viewport - apply fade out
+        if (!entry.target.classList.contains("fade-out-top")) {
+          entry.target.classList.add("fade-out-top");
+        }
+      } else {
+        // Element is visible or below viewport - remove fade out
+        if (entry.target.classList.contains("fade-out-top")) {
+          entry.target.classList.remove("fade-out-top");
+        }
+      }
+    });
+  }, options);
+
+  // Observe all main content elements (sections, divs, etc.) - excluding notification elements
+  const elementsToObserve = document.querySelectorAll(
+    "section:not(.notification), article, .container, h1, h2, h3, p, ul, li, #BOD > div",
+  );
+
+  elementsToObserve.forEach((element) => {
+    observer.observe(element);
+  });
+}
 
 function showNotification() {
   // Disable scrolling

@@ -68,11 +68,11 @@ function showNotification() {
   notification.className = "notification";
   notification.innerHTML = `
     <div class="notification-content">
-      <h3>Welcome, Anime Enthusiast!</h3>
-      <p>You have finally made your way to the greatest anime association you will ever know! 🎌</p>
+      <h3>🎌 Welcome, Anime Warrior! 🎌</h3>
+      <p>You have awakened to the greatest anime association in the universe! Prepare for an epic journey through anime realms! ⚔️</p>
       <div class="notification-buttons">
         <button class="close-notification">×</button>
-        <button class="bankai-btn">Bankai...</button>
+        <button class="bankai-btn">Bankai Mode!</button>
       </div>
     </div>
   `;

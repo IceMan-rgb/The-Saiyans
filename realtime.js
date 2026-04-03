@@ -4,7 +4,7 @@ const WebSocket = require("ws");
 const activeUsers = new Map();
 const userConnections = new Map();
 
-function initializeWebSocket(wss, db, JWT_SECRET) {
+function initializeWebSocket(wss, pool, JWT_SECRET) {
   // WebSocket connection handler
   wss.on("connection", (ws) => {
     console.log("🔗 New WebSocket connection");
@@ -17,7 +17,7 @@ function initializeWebSocket(wss, db, JWT_SECRET) {
 
         switch (data.type) {
           case "AUTH":
-            handleAuth(ws, data, db, JWT_SECRET, (uid, uname) => {
+            handleAuth(ws, data, pool, JWT_SECRET, (uid, uname) => {
               userId = uid;
               username = uname;
             });
@@ -27,10 +27,10 @@ function initializeWebSocket(wss, db, JWT_SECRET) {
             break;
           case "NOTIFICATION_READ":
             if (userId)
-              markNotificationAsRead(userId, data.notificationId, ws, db);
+              markNotificationAsRead(userId, data.notificationId, ws, pool);
             break;
           case "STATUS_UPDATE":
-            if (userId) updateUserStatus(userId, data.status, ws, db);
+            if (userId) updateUserStatus(userId, data.status, ws, pool);
             break;
           case "BROADCAST":
             if (userId && data.message) {
@@ -50,7 +50,7 @@ function initializeWebSocket(wss, db, JWT_SECRET) {
 
     ws.on("close", () => {
       if (userId) {
-        setUserOffline(userId, db);
+        setUserOffline(userId, pool);
       }
       console.log("🔌 WebSocket connection closed");
     });
@@ -61,7 +61,7 @@ function initializeWebSocket(wss, db, JWT_SECRET) {
   });
 }
 
-function handleAuth(ws, data, db, JWT_SECRET, callback) {
+function handleAuth(ws, data, pool, JWT_SECRET, callback) {
   const jwt = require("jsonwebtoken");
 
   jwt.verify(data.token, JWT_SECRET, (err, user) => {
@@ -102,22 +102,25 @@ function handleAuth(ws, data, db, JWT_SECRET, callback) {
   });
 }
 
-function setUserOffline(userId, db) {
+async function setUserOffline(userId, pool) {
   activeUsers.delete(userId);
   // Track offline status in memory (activeUsers Map)
 
-  db.get("SELECT username FROM users WHERE id = ?", [userId], (err, user) => {
-    if (user) {
+  try {
+    const result = await pool.query("SELECT username FROM users WHERE id = $1", [userId]);
+    if (result.rows.length > 0) {
       broadcastToAll({
         type: "USER_OFFLINE",
-        username: user.username,
+        username: result.rows[0].username,
         onlineCount: activeUsers.size,
       });
     }
-  });
+  } catch (err) {
+    console.error("Error fetching user for offline notification:", err);
+  }
 }
 
-function updateUserStatus(userId, status, ws, db) {
+async function updateUserStatus(userId, status, ws, pool) {
   // Update user status in memory
   const user = activeUsers.get(userId);
   if (user) {
@@ -127,18 +130,18 @@ function updateUserStatus(userId, status, ws, db) {
   ws.send(JSON.stringify({ type: "STATUS_UPDATED", status }));
 }
 
-function markNotificationAsRead(userId, notificationId, ws, db) {
-  db.run(
-    "UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?",
-    [notificationId, userId],
-    (err) => {
-      if (!err) {
-        ws.send(
-          JSON.stringify({ type: "NOTIFICATION_READ_SUCCESS", notificationId }),
-        );
-      }
-    },
-  );
+async function markNotificationAsRead(userId, notificationId, ws, pool) {
+  try {
+    await pool.query(
+      "UPDATE notifications SET read = true WHERE id = $1 AND user_id = $2",
+      [notificationId, userId]
+    );
+    ws.send(
+      JSON.stringify({ type: "NOTIFICATION_READ_SUCCESS", notificationId }),
+    );
+  } catch (err) {
+    console.error("Error marking notification as read:", err);
+  }
 }
 
 function broadcastToAll(message) {

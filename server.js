@@ -798,4 +798,4 @@ const server = app.listen(PORT, () => {
 
 // WebSocket server setup
 const wss = new WebSocket.Server({ server });
-realtime.initializeWebSocket(wss, db, JWT_SECRET);
+realtime.initializeWebSocket(wss, pool, JWT_SECRET);

@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - 🏆 THE SAIYANS 🏆</title>
+
+    <!-- SEO Meta Tags -->
+    <meta
+      name="description"
+      content="Login to THE SAIYANS - Access exclusive anime community features, member benefits, and personalized content."
+    />
+    <meta
+      name="keywords"
+      content="login, anime community, Saiyans, member login, anime forum, user account"
+    />
+    <meta name="author" content="Saiyans Association" />
+    <meta name="robots" content="index, follow" />
+    <meta name="language" content="English" />
+
+    <!-- Open Graph Tags (for social sharing) -->
+    <meta property="og:title" content="Login - 🏆 THE SAIYANS 🏆" />
+    <meta
+      property="og:description"
+      content="Login to THE SAIYANS - Access exclusive anime community features!"
+    />
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://iceman-rgb.github.io/The-Saiyans/login.html"
+    />
+    <meta property="og:image" content="logo.jpg" />
+
+    <link rel="icon" type="image/jpeg" href="logo.jpg" />
+    <link rel="stylesheet" href="style.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <button class="menu-toggle" id="menuToggle" title="Toggle Menu">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <header id="navbar">
+      <div class="navbar-container">
+        <div class="logo">THE SAIYANS</div>
+        <button
+          class="sidebar-hide-btn"
+          id="sidebarHideBtn"
+          title="Hide Sidebar"
+        >
+          <span>◁</span>
+        </button>
+        <nav class="nav-menu">
+          <a href="index.html" class="nav-link">Home</a>
+          <a href="about.html" class="nav-link">About Us</a>
+          <a href="anime.html" class="nav-link">Anime</a>
+          <a href="board.html" class="nav-link">Board</a>
+          <a href="announcements.html" class="nav-link">Announcements</a>
+          <a href="comments.html" class="nav-link">Comments</a>
+          <a href="dashboard.html" class="nav-link">Dashboard</a>
+          <a href="login.html" class="nav-link active">Login</a>
+          <a href="register.html" class="nav-link">Register</a>
+        </nav>
+      </div>
+    </header>
+
+    <section id="login-hero">
+      <h1>🔐 Welcome Back, Warrior! 🔐</h1>
+      <p>
+        Login to access exclusive anime community features and personalized
+        content.
+      </p>
+    </section>
+
+    <section id="login-form-section">
+      <div class="login-container">
+        <div class="login-card">
+          <h2>⚔️ Member Login ⚔️</h2>
+
+          <form id="login-form" class="login-form">
+            <div class="form-group">
+              <label for="username">Username or Email:</label>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                required
+                placeholder="Enter your username or email"
+                autocomplete="username"
+              />
+              <div class="input-icon">👤</div>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password:</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                placeholder="Enter your password"
+                autocomplete="current-password"
+              />
+              <div class="input-icon">🔒</div>
+            </div>
+
+            <div class="form-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="rememberMe" name="rememberMe" />
+                <span class="checkmark"></span>
+                Remember me
+              </label>
+
+              <a href="#" class="forgot-password">Forgot Password?</a>
+            </div>
+
+            <button type="submit" class="login-btn">
+              <span class="btn-text">Login</span>
+              <span class="btn-icon">⚡</span>
+            </button>
+          </form>
+
+          <div class="login-footer">
+            <p>
+              Don't have an account?
+              <a href="#" class="signup-link">Sign up here</a>
+            </p>
+          </div>
+        </div>
+
+        <div class="login-benefits">
+          <h3>🎁 Login Benefits 🎁</h3>
+          <ul>
+            <li>🏆 Access exclusive member content</li>
+            <li>💬 Participate in private discussions</li>
+            <li>🎨 Submit fan art and AMVs</li>
+            <li>🏅 Earn achievements and ranks</li>
+            <li>📊 Track your anime progress</li>
+            <li>🤝 Connect with fellow warriors</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="social-login">
+      <h2>🌐 Alternative Login Methods 🌐</h2>
+      <div class="social-buttons">
+        <button class="social-btn google-btn">
+          <span class="social-icon">🌐</span>
+          Continue with Google
+        </button>
+
+        <button class="social-btn discord-btn">
+          <span class="social-icon">💬</span>
+          Continue with Discord
+        </button>
+
+        <button class="social-btn github-btn">
+          <span class="social-icon">💻</span>
+          Continue with GitHub
+        </button>
+      </div>
+    </section>
+
+    <footer id="footer">
+      <h2>Join The Saiyans Association 🚀</h2>
+      <p>
+        Are you ready to wake up to reality? Join our anime community and
+        connect with fellow enthusiasts! 🌟
+      </p>
+      <a
+        href="https://chat.whatsapp.com/IyrUynoGtFQEuL1640SddX"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="whatsapp-btn"
+      >
+        Join Us On WhatsApp 💬
+      </a>
+      <p class="footer-copyright">
+        © 2026 Saiyans Association. All rights reserved.
+      </p>
+      <p class="footer-credit">Made by Prince(Eminence) 👨‍💻</p>
+    </footer>
+  </body>
+</html>

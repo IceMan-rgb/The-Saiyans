@@ -1,0 +1,1128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - 🏆 THE SAIYANS 🏆</title>
+
+    <link rel="icon" type="image/jpeg" href="logo.jpg" />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      :root {
+        --primary: #00d4ff;
+        --secondary: #ffd700;
+        --danger: #ff6b6b;
+        --success: #25d366;
+      }
+
+      .dashboard-wrapper {
+        display: grid;
+        grid-template-columns: 250px 1fr;
+        min-height: 100vh;
+        gap: 0;
+      }
+
+      .dashboard-sidebar {
+        background: linear-gradient(135deg, #2d1b69 0%, #11998e 100%);
+        padding: 2rem 1rem;
+        position: sticky;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+        border-right: 2px solid var(--primary);
+      }
+
+      .dashboard-sidebar h3 {
+        color: white;
+        margin-bottom: 2rem;
+        font-size: 1.3rem;
+        text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
+      }
+
+      .sidebar-menu {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .sidebar-menu li {
+        margin-bottom: 1rem;
+      }
+
+      .sidebar-menu button {
+        width: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        color: white;
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: 0.95rem;
+        text-align: left;
+      }
+
+      .sidebar-menu button:hover,
+      .sidebar-menu button.active {
+        background: var(--primary);
+        color: black;
+        border-color: var(--primary);
+        transform: translateX(5px);
+      }
+
+      .dashboard-content {
+        padding: 2rem;
+        overflow-y: auto;
+      }
+
+      .dashboard-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 2rem;
+        padding-bottom: 1rem;
+        border-bottom: 2px solid var(--primary);
+      }
+
+      .dashboard-header h1 {
+        color: var(--primary);
+        font-size: 2rem;
+        margin: 0;
+        text-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
+      }
+
+      .user-status {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        background: rgba(0, 212, 255, 0.1);
+        padding: 0.75rem 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--primary);
+      }
+
+      .status-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        animation: pulse 2s infinite;
+      }
+
+      .status-indicator.online {
+        background: var(--success);
+      }
+
+      .status-indicator.away {
+        background: var(--secondary);
+      }
+
+      .status-indicator.offline {
+        background: #999;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
+      }
+
+      .dashboard-section {
+        display: none;
+      }
+
+      .dashboard-section.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .profile-card {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 2rem;
+        border-radius: 15px;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        backdrop-filter: blur(10px);
+        margin-bottom: 2rem;
+      }
+
+      .profile-info {
+        display: grid;
+        grid-template-columns: 150px 1fr;
+        gap: 2rem;
+        align-items: start;
+      }
+
+      .profile-avatar {
+        width: 150px;
+        height: 150px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 3rem;
+        border: 3px solid var(--primary);
+        color: white;
+      }
+
+      .profile-details {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .profile-field {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      .profile-field label {
+        color: var(--secondary);
+        font-weight: bold;
+        font-size: 0.9rem;
+      }
+
+      .profile-field input,
+      .profile-field textarea {
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(0, 212, 255, 0.3);
+        color: white;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+
+      .profile-field input::placeholder,
+      .profile-field textarea::placeholder {
+        color: #ccc;
+      }
+
+      .notifications-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .notification-item {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border-left: 4px solid var(--primary);
+        border: 1px solid rgba(0, 212, 255, 0.2);
+      }
+
+      .notification-item.unread {
+        background: rgba(0, 212, 255, 0.1);
+        border-left: 4px solid var(--primary);
+      }
+
+      .notification-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.5rem;
+      }
+
+      .notification-title {
+        color: var(--secondary);
+        font-weight: bold;
+        font-size: 1.1rem;
+      }
+
+      .notification-time {
+        color: #999;
+        font-size: 0.85rem;
+      }
+
+      .notification-message {
+        color: #e0e0e0;
+        margin-bottom: 0.5rem;
+      }
+
+      .notification-actions {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .notification-actions button {
+        background: transparent;
+        border: 1px solid rgba(0, 212, 255, 0.5);
+        color: var(--primary);
+        padding: 0.35rem 0.75rem;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        transition: all 0.3s ease;
+      }
+
+      .notification-actions button:hover {
+        background: var(--primary);
+        color: black;
+      }
+
+      .activity-feed {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+      }
+
+      .activity-item {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 3px solid var(--primary);
+      }
+
+      .activity-action {
+        color: var(--secondary);
+        font-weight: bold;
+      }
+
+      .activity-time {
+        color: #999;
+        font-size: 0.85rem;
+        margin-top: 0.5rem;
+      }
+
+      .online-users {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+        gap: 1rem;
+      }
+
+      .user-card {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1rem;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .user-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+      }
+
+      .user-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        margin: 0 auto 0.5rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2rem;
+        color: white;
+      }
+
+      .user-name {
+        color: white;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+      }
+
+      .user-status-badge {
+        display: inline-block;
+        background: var(--success);
+        color: white;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.8rem;
+      }
+
+      .btn-primary {
+        background: linear-gradient(45deg, var(--primary), #0099cc);
+        color: black;
+        border: none;
+        padding: 0.75rem 1.5rem;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        font-size: 1rem;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
+      }
+
+      .btn-danger {
+        background: var(--danger);
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #ff9999;
+      }
+
+      .empty-state {
+        text-align: center;
+        padding: 2rem;
+        color: #999;
+      }
+
+      .empty-state-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+      }
+
+      .stat-card {
+        background: rgba(255, 255, 255, 0.05);
+        padding: 1.5rem;
+        border-radius: 10px;
+        border: 1px solid rgba(0, 212, 255, 0.2);
+        text-align: center;
+        transition: all 0.3s ease;
+      }
+
+      .stat-card:hover {
+        transform: translateY(-5px);
+        border-color: var(--primary);
+      }
+
+      .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+      }
+
+      .stat-label {
+        color: #e0e0e0;
+        font-size: 0.9rem;
+      }
+
+      @media (max-width: 768px) {
+        .dashboard-wrapper {
+          grid-template-columns: 1fr;
+        }
+
+        .dashboard-sidebar {
+          position: fixed;
+          left: -250px;
+          width: 250px;
+          height: 100vh;
+          z-index: 100;
+          transition: left 0.3s ease;
+        }
+
+        .dashboard-sidebar.open {
+          left: 0;
+        }
+
+        .profile-info {
+          grid-template-columns: 1fr;
+          text-align: center;
+        }
+
+        .profile-avatar {
+          margin: 0 auto;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="dashboard-wrapper">
+      <!-- Sidebar -->
+      <aside class="dashboard-sidebar">
+        <h3>🏆 Dashboard</h3>
+        <ul class="sidebar-menu">
+          <li>
+            <button class="nav-btn active" data-section="profile">
+              👤 Profile
+            </button>
+          </li>
+          <li>
+            <button class="nav-btn" data-section="notifications">
+              🔔 Notifications
+            </button>
+          </li>
+          <li>
+            <button class="nav-btn" data-section="activity">📊 Activity</button>
+          </li>
+          <li>
+            <button class="nav-btn" data-section="online-users">
+              👥 Online Users
+            </button>
+          </li>
+          <li id="adminMenuItem" style="display: none">
+            <button class="nav-btn" data-section="admin">👑 Admin Panel</button>
+          </li>
+          <li>
+            <button class="nav-btn" data-section="settings">⚙️ Settings</button>
+          </li>
+          <li
+            style="
+              margin-top: 2rem;
+              border-top: 1px solid rgba(255, 255, 255, 0.2);
+              padding-top: 1rem;
+            "
+          >
+            <button
+              id="logoutBtn"
+              class="nav-btn"
+              style="
+                background: rgba(255, 107, 107, 0.2);
+                border-color: #ff6b6b;
+                color: #ff6b6b;
+              "
+            >
+              🚪 Logout
+            </button>
+          </li>
+        </ul>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="dashboard-content">
+        <!-- Header -->
+        <div class="dashboard-header">
+          <div>
+            <h1>Welcome, <span id="usernameDisplay">Warrior</span>!</h1>
+            <a
+              href="index.html"
+              style="
+                color: var(--secondary);
+                text-decoration: none;
+                font-size: 0.9rem;
+                margin-top: 0.5rem;
+                display: inline-block;
+              "
+              >← Back to Home</a
+            >
+          </div>
+          <div class="user-status">
+            <div class="status-indicator online" id="statusIndicator"></div>
+            <span id="statusText">Online</span>
+          </div>
+        </div>
+
+        <!-- Profile Section -->
+        <section id="profile" class="dashboard-section active">
+          <div class="profile-card">
+            <h2 style="color: var(--primary); margin-top: 0">Your Profile</h2>
+            <div class="profile-info">
+              <div class="profile-avatar" id="profileAvatar">👤</div>
+              <div class="profile-details">
+                <div class="profile-field">
+                  <label>Username:</label>
+                  <input type="text" id="profileUsername" readonly />
+                </div>
+                <div class="profile-field">
+                  <label>Email:</label>
+                  <input type="email" id="profileEmail" readonly />
+                </div>
+                <div class="profile-field">
+                  <label>Bio:</label>
+                  <textarea
+                    id="profileBio"
+                    placeholder="Tell us about yourself!"
+                    rows="4"
+                  ></textarea>
+                </div>
+                <button class="btn-primary" id="updateProfileBtn">
+                  Update Profile
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="profile-card">
+            <h2 style="color: var(--secondary)">Account Info</h2>
+            <p><strong>Member Since:</strong> <span id="memberSince"></span></p>
+            <p><strong>Last Login:</strong> <span id="lastLogin"></span></p>
+            <p>
+              <strong>Account Status:</strong>
+              <span style="color: var(--success)">Active ✓</span>
+            </p>
+          </div>
+        </section>
+
+        <!-- Notifications Section -->
+        <section id="notifications" class="dashboard-section">
+          <h2 style="color: var(--primary); margin-bottom: 1.5rem">
+            🔔 Notifications
+          </h2>
+          <div class="notifications-list" id="notificationsList">
+            <div class="empty-state">
+              <div class="empty-state-icon">📭</div>
+              <p>No notifications yet</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Activity Section -->
+        <section id="activity" class="dashboard-section">
+          <h2 style="color: var(--primary); margin-bottom: 1.5rem">
+            📊 Your Activity
+          </h2>
+          <div class="activity-feed" id="activityFeed">
+            <div class="empty-state">
+              <div class="empty-state-icon">📝</div>
+              <p>No activity yet</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Online Users Section -->
+        <section id="online-users" class="dashboard-section">
+          <h2 style="color: var(--primary); margin-bottom: 1.5rem">
+            👥 Online Warriors
+          </h2>
+          <div class="online-users" id="onlineUsersList">
+            <div class="empty-state" style="grid-column: 1 / -1">
+              <div class="empty-state-icon">🌍</div>
+              <p>Connecting to real-time feed...</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Admin Panel Section -->
+        <section id="admin" class="dashboard-section">
+          <h2 style="color: var(--primary); margin-bottom: 1.5rem">
+            👑 Admin Control Panel
+          </h2>
+          <div class="profile-card">
+            <h3 style="color: var(--secondary); margin-top: 0">
+              Site Statistics
+            </h3>
+            <div
+              style="
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+                margin-bottom: 2rem;
+              "
+            >
+              <div class="stat-card">
+                <div class="stat-number" id="totalUsersCount">-</div>
+                <div class="stat-label">Total Registered Users</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="onlineUsersCount">-</div>
+                <div class="stat-label">Currently Online</div>
+              </div>
+              <div class="stat-card">
+                <div class="stat-number" id="pendingQuotesCount">-</div>
+                <div class="stat-label">Pending Quotes</div>
+              </div>
+            </div>
+          </div>
+          <div class="profile-card">
+            <h3 style="color: var(--secondary); margin-top: 0">
+              Admin Controls
+            </h3>
+            <div style="display: flex; flex-wrap: wrap; gap: 1rem">
+              <button class="btn-primary" onclick="refreshAdminStats()">
+                🔄 Refresh Stats
+              </button>
+              <button class="btn-primary" onclick="manageQuotes()">
+                📝 Manage Quotes
+              </button>
+              <button class="btn-primary" onclick="viewAllUsers()">
+                👥 View All Users
+              </button>
+              <button class="btn-danger" onclick="systemMaintenance()">
+                ⚠️ System Maintenance
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Settings Section -->
+        <section id="settings" class="dashboard-section">
+          <div class="profile-card">
+            <h2 style="color: var(--primary); margin-top: 0">⚙️ Settings</h2>
+
+            <h3 style="color: var(--secondary); margin-top: 1.5rem">Status</h3>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1rem">
+              <button id="statusOnlineBtn" class="btn-primary">Online</button>
+              <button
+                class="btn-primary"
+                style="background: rgba(255, 215, 0, 0.5); color: black"
+              >
+                Away
+              </button>
+              <button
+                class="btn-primary"
+                style="background: rgba(150, 150, 150, 0.5); color: white"
+              >
+                Offline
+              </button>
+            </div>
+
+            <h3 style="color: var(--secondary); margin-top: 1.5rem">Privacy</h3>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                color: white;
+                margin-bottom: 1rem;
+              "
+            >
+              <input type="checkbox" checked />
+              <span>Show online status</span>
+            </label>
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                color: white;
+                margin-bottom: 1rem;
+              "
+            >
+              <input type="checkbox" checked />
+              <span>Show in online users list</span>
+            </label>
+
+            <h3 style="color: var(--secondary); margin-top: 1.5rem">
+              Danger Zone
+            </h3>
+            <button class="btn-danger" id="deleteAccountBtn">
+              Delete Account
+            </button>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      // Get backend API URL dynamically
+      function getAPIBaseURL() {
+        if (window.BACKEND_API_URL) return window.BACKEND_API_URL;
+        const storedUrl = localStorage.getItem("backendApiUrl");
+        if (storedUrl) return storedUrl;
+        if (window.location.hostname === "iceman-rgb.github.io")
+          return "https://saiyans-api.herokuapp.com/api";
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        )
+          return "http://localhost:3001/api";
+        return "http://localhost:3001/api";
+      }
+
+      function getWSURL() {
+        if (window.BACKEND_WS_URL) return window.BACKEND_WS_URL;
+        const storedUrl = localStorage.getItem("backendWsUrl");
+        if (storedUrl) return storedUrl;
+        if (window.location.hostname === "iceman-rgb.github.io")
+          return "wss://saiyans-api.herokuapp.com";
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        )
+          return "ws://localhost:3001";
+        return "ws://localhost:3001";
+      }
+
+      const API_BASE = getAPIBaseURL();
+      const WS_URL = getWSURL();
+      let ws = null;
+      let currentUser = null;
+      let accessToken = null;
+
+      // Initialize on page load
+      document.addEventListener("DOMContentLoaded", () => {
+        const token = localStorage.getItem("accessToken");
+        if (!token) {
+          window.location.href = "login.html";
+          return;
+        }
+
+        accessToken = token;
+        loadUserProfile();
+        setupWebSocket();
+        setupEventListeners();
+      });
+
+      function setupEventListeners() {
+        // Navigation
+        document.querySelectorAll(".nav-btn").forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const section = e.target.dataset.section;
+            if (section) switchSection(section);
+          });
+        });
+
+        // Buttons
+        document
+          .getElementById("updateProfileBtn")
+          .addEventListener("click", updateProfile);
+        document.getElementById("logoutBtn").addEventListener("click", logout);
+        document
+          .getElementById("deleteAccountBtn")
+          .addEventListener("click", deleteAccount);
+        document
+          .getElementById("statusOnlineBtn")
+          .addEventListener("click", () => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              ws.send(
+                JSON.stringify({ type: "STATUS_UPDATE", status: "online" }),
+              );
+            }
+          });
+      }
+
+      function setupWebSocket() {
+        ws = new WebSocket(WS_URL);
+
+        ws.addEventListener("open", () => {
+          console.log("✅ WebSocket connected");
+          if (accessToken) {
+            ws.send(JSON.stringify({ type: "AUTH", token: accessToken }));
+          }
+        });
+
+        ws.addEventListener("message", (event) => {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        });
+
+        ws.addEventListener("close", () => {
+          console.log("❌ WebSocket disconnected");
+          setTimeout(setupWebSocket, 3000); // Reconnect after 3s
+        });
+
+        ws.addEventListener("error", (error) => {
+          console.error("⚠️ WebSocket error:", error);
+        });
+      }
+
+      function handleWebSocketMessage(data) {
+        switch (data.type) {
+          case "AUTH_SUCCESS":
+            console.log("🔐 Authenticated:", data.user);
+            break;
+          case "NOTIFICATION":
+            addNotification(data.notification);
+            break;
+          case "USER_ONLINE":
+            console.log(`🟢 ${data.username} came online`);
+            break;
+          case "USER_OFFLINE":
+            console.log(`🔴 ${data.username} went offline`);
+            break;
+          case "STATUS_UPDATED":
+            updateStatusUI(data.status);
+            break;
+        }
+      }
+
+      async function loadUserProfile() {
+        try {
+          const response = await fetch(`${API_BASE}/auth/profile`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (!response.ok) throw new Error("Failed to load profile");
+
+          const data = await response.json();
+          currentUser = data.user;
+
+          // Redirect non-admin users to user dashboard
+          if (!currentUser.is_admin) {
+            window.location.href = "user-dashboard.html";
+            return;
+          }
+
+          // Update UI
+          document.getElementById("usernameDisplay").textContent =
+            currentUser.username;
+          document.getElementById("profileUsername").value =
+            currentUser.username;
+          document.getElementById("profileEmail").value = currentUser.email;
+          document.getElementById("profileBio").value = currentUser.bio || "";
+          document.getElementById("memberSince").textContent = new Date(
+            currentUser.created_at,
+          ).toLocaleDateString();
+          document.getElementById("lastLogin").textContent =
+            currentUser.last_login
+              ? new Date(currentUser.last_login).toLocaleString()
+              : "Never";
+
+          // Check if user is admin and show admin panel
+          if (currentUser.is_admin) {
+            document.getElementById("adminMenuItem").style.display = "block";
+            loadAdminStats();
+          }
+
+          loadNotifications();
+          loadActivity();
+          loadOnlineUsers();
+        } catch (error) {
+          console.error("Error loading profile:", error);
+        }
+      }
+
+      async function loadNotifications() {
+        try {
+          const response = await fetch(`${API_BASE}/notifications`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          const data = await response.json();
+          const list = document.getElementById("notificationsList");
+
+          if (data.notifications.length === 0) {
+            list.innerHTML =
+              '<div class="empty-state"><div class="empty-state-icon">📭</div><p>No notifications</p></div>';
+            return;
+          }
+
+          list.innerHTML = data.notifications
+            .map(
+              (notif) => `
+                    <div class="notification-item ${notif.read ? "" : "unread"}">
+                        <div class="notification-header">
+                            <span class="notification-title">${notif.title}</span>
+                            <span class="notification-time">${new Date(notif.created_at).toLocaleString()}</span>
+                        </div>
+                        <div class="notification-message">${notif.message}</div>
+                        <div class="notification-actions">
+                            <button onclick="markNotificationRead(${notif.id})">Mark as read</button>
+                            <button onclick="deleteNotification(${notif.id})">Delete</button>
+                        </div>
+                    </div>
+                `,
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error loading notifications:", error);
+        }
+      }
+
+      async function loadActivity() {
+        try {
+          const response = await fetch(
+            `${API_BASE}/activity/${currentUser.id}`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            },
+          );
+
+          const data = await response.json();
+          const feed = document.getElementById("activityFeed");
+
+          if (data.activities.length === 0) {
+            feed.innerHTML =
+              '<div class="empty-state"><div class="empty-state-icon">📝</div><p>No activity yet</p></div>';
+            return;
+          }
+
+          feed.innerHTML = data.activities
+            .map(
+              (activity) => `
+                    <div class="activity-item">
+                        <span class="activity-action">${activity.action}</span>
+                        ${activity.details ? `<div style="color: #ccc; margin-top: 0.5rem;">${activity.details}</div>` : ""}
+                        <div class="activity-time">${new Date(activity.timestamp).toLocaleString()}</div>
+                    </div>
+                `,
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error loading activity:", error);
+        }
+      }
+
+      async function loadOnlineUsers() {
+        try {
+          const response = await fetch(`${API_BASE}/users/status/online`);
+          const data = await response.json();
+          const list = document.getElementById("onlineUsersList");
+
+          if (data.users.length === 0) {
+            list.innerHTML =
+              '<div class="empty-state" style="grid-column: 1 / -1;"><div class="empty-state-icon">🌍</div><p>No users online</p></div>';
+            return;
+          }
+
+          list.innerHTML = data.users
+            .map(
+              (user, i) => `
+                    <div class="user-card">
+                        <div class="user-avatar">${String.fromCodePoint(0x1f9d0 + (i % 10))}</div>
+                        <div class="user-name">${user.username}</div>
+                        <span class="user-status-badge">Online</span>
+                    </div>
+                `,
+            )
+            .join("");
+        } catch (error) {
+          console.error("Error loading online users:", error);
+        }
+      }
+
+      function switchSection(section) {
+        // Hide all sections
+        document
+          .querySelectorAll(".dashboard-section")
+          .forEach((s) => s.classList.remove("active"));
+        // Remove active from buttons
+        document
+          .querySelectorAll(".nav-btn")
+          .forEach((b) => b.classList.remove("active"));
+
+        // Show selected section
+        document.getElementById(section).classList.add("active");
+        event.target.classList.add("active");
+      }
+
+      async function updateProfile() {
+        try {
+          const response = await fetch(`${API_BASE}/auth/profile`, {
+            method: "PUT",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              bio: document.getElementById("profileBio").value,
+            }),
+          });
+
+          if (response.ok) {
+            alert("✅ Profile updated successfully!");
+            loadUserProfile();
+          } else {
+            alert("❌ Failed to update profile");
+          }
+        } catch (error) {
+          console.error("Error updating profile:", error);
+        }
+      }
+
+      async function logout() {
+        try {
+          const refreshToken = localStorage.getItem("refreshToken");
+          await fetch(`${API_BASE}/auth/logout`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ refreshToken }),
+          });
+        } catch (error) {
+          console.error("Logout error:", error);
+        }
+
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("refreshToken");
+        localStorage.removeItem("userData");
+        if (ws) ws.close();
+        window.location.href = "login.html";
+      }
+
+      async function deleteAccount() {
+        if (!confirm("⚠️ Are you sure? This cannot be undone!")) return;
+        alert(
+          "This feature will be implemented in the full production version.",
+        );
+      }
+
+      function updateStatusUI(status) {
+        const indicator = document.getElementById("statusIndicator");
+        const text = document.getElementById("statusText");
+        indicator.className = `status-indicator ${status}`;
+        text.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+      }
+
+      function addNotification(notification) {
+        console.log("🔔 New notification:", notification);
+        loadNotifications(); // Reload notifications
+      }
+
+      async function markNotificationRead(notifId) {
+        try {
+          await fetch(`${API_BASE}/notifications/${notifId}/read`, {
+            method: "PUT",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          loadNotifications();
+        } catch (error) {
+          console.error("Error marking notification as read:", error);
+        }
+      }
+
+      async function deleteNotification(notifId) {
+        try {
+          await fetch(`${API_BASE}/notifications/${notifId}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          loadNotifications();
+        } catch (error) {
+          console.error("Error deleting notification:", error);
+        }
+      }
+
+      // Admin functions
+      async function loadAdminStats() {
+        try {
+          const response = await fetch(`${API_BASE}/admin/stats`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+
+          if (!response.ok) throw new Error("Failed to load admin stats");
+
+          const data = await response.json();
+
+          document.getElementById("totalUsersCount").textContent =
+            data.totalUsers || 0;
+          document.getElementById("onlineUsersCount").textContent =
+            data.onlineUsers || 0;
+          document.getElementById("pendingQuotesCount").textContent =
+            data.pendingQuotes || 0;
+        } catch (error) {
+          console.error("Error loading admin stats:", error);
+          // Show error in UI
+          document.getElementById("totalUsersCount").textContent = "Error";
+          document.getElementById("onlineUsersCount").textContent = "Error";
+          document.getElementById("pendingQuotesCount").textContent = "Error";
+        }
+      }
+
+      async function refreshAdminStats() {
+        await loadAdminStats();
+        alert("✅ Stats refreshed!");
+      }
+
+      function manageQuotes() {
+        alert(
+          "📝 Quote management will be implemented in the full admin panel.",
+        );
+      }
+
+      function viewAllUsers() {
+        alert(
+          "👥 User management will be implemented in the full admin panel.",
+        );
+      }
+
+      function systemMaintenance() {
+        if (confirm("⚠️ This will perform system maintenance. Continue?")) {
+          alert("🔧 System maintenance completed!");
+        }
+      }
+    </script>
+  </body>
+</html>

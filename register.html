@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register - 🏆 THE SAIYANS 🏆</title>
+
+    <link rel="icon" type="image/jpeg" href="logo.jpg" />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <button class="menu-toggle" id="menuToggle">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <header id="navbar">
+      <div class="navbar-container">
+        <div class="logo">THE SAIYANS</div>
+        <button
+          class="sidebar-hide-btn"
+          id="sidebarHideBtn"
+          title="Hide Sidebar"
+        >
+          <span>◁</span>
+        </button>
+        <nav class="nav-menu">
+          <a href="index.html" class="nav-link">Home</a>
+          <a href="about.html" class="nav-link">About Us</a>
+          <a href="anime.html" class="nav-link">Anime</a>
+          <a href="board.html" class="nav-link">Board</a>
+          <a href="announcements.html" class="nav-link">Announcements</a>
+          <a href="comments.html" class="nav-link">Comments</a>
+          <a href="dashboard.html" class="nav-link">Dashboard</a>
+          <a href="login.html" class="nav-link">Login</a>
+          <a href="register.html" class="nav-link active">Register</a>
+        </nav>
+      </div>
+    </header>
+
+    <section id="register-hero">
+      <h1>🔱 Join THE SAIYANS! 🔱</h1>
+      <p>Create your account and become part of our epic anime community!</p>
+    </section>
+
+    <section id="register-form-section">
+      <div class="login-container" style="grid-template-columns: 1fr">
+        <div class="login-card">
+          <h2>⚔️ Create Account ⚔️</h2>
+
+          <form id="registerForm" class="login-form">
+            <div class="form-group">
+              <label for="username">Username:</label>
+              <input
+                type="text"
+                id="username"
+                name="username"
+                required
+                placeholder="Choose your warrior name"
+                minlength="3"
+                autocomplete="username"
+              />
+              <div class="input-icon">👤</div>
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email:</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                required
+                placeholder="Enter your email"
+                autocomplete="email"
+              />
+              <div class="input-icon">📧</div>
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password:</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                required
+                placeholder="Create a strong password"
+                minlength="6"
+                autocomplete="new-password"
+              />
+              <div class="input-icon">🔒</div>
+            </div>
+
+            <div class="form-group">
+              <label for="confirmPassword">Confirm Password:</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                required
+                placeholder="Confirm your password"
+                minlength="6"
+                autocomplete="new-password"
+              />
+              <div class="input-icon">🔐</div>
+            </div>
+
+            <label
+              style="
+                display: flex;
+                align-items: center;
+                gap: 0.5rem;
+                color: #e0e0e0;
+                margin: 1rem 0;
+              "
+            >
+              <input type="checkbox" id="agreeTerms" required />
+              <span
+                >I agree to the
+                <a href="#" style="color: var(--primary)"
+                  >Terms of Service</a
+                ></span
+              >
+            </label>
+
+            <button type="submit" class="login-btn">
+              <span class="btn-text">Create Account</span>
+              <span class="btn-icon">⚡</span>
+            </button>
+          </form>
+
+          <div class="login-footer">
+            <p>
+              Already have an account?
+              <a href="login.html" class="signup-link">Login here</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <footer id="footer">
+      <h2>Join The Saiyans Association 🚀</h2>
+      <p>
+        Are you ready to wake up to reality? Join our anime community and
+        connect with fellow enthusiasts! 🌟
+      </p>
+      <a
+        href="https://chat.whatsapp.com/IyrUynoGtFQEuL1640SddX"
+        target="_blank"
+        class="whatsapp-btn"
+      >
+        Join Us On WhatsApp 💬
+      </a>
+      <p style="margin-top: 1.5rem; font-size: 0.9em">
+        © 2026 Saiyans Association. All rights reserved.
+      </p>
+    </footer>
+
+    <script>
+      // Get backend API URL dynamically
+      function getAPIBaseURL() {
+        if (window.BACKEND_API_URL) return window.BACKEND_API_URL;
+        const storedUrl = localStorage.getItem("backendApiUrl");
+        if (storedUrl) return storedUrl;
+        if (window.location.hostname === "iceman-rgb.github.io")
+          return "https://saiyans-api.herokuapp.com/api";
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        )
+          return "http://localhost:3001/api";
+        return "http://localhost:3001/api";
+      }
+
+      const API_BASE = getAPIBaseURL();
+
+      document
+        .getElementById("registerForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const username = document.getElementById("username").value.trim();
+          const email = document.getElementById("email").value.trim();
+          const password = document.getElementById("password").value;
+          const confirmPassword =
+            document.getElementById("confirmPassword").value;
+
+          // Validation
+          if (username.length < 3) {
+            showMessage("Username must be at least 3 characters", "error");
+            return;
+          }
+
+          if (!email.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
+            showMessage("Please enter a valid email", "error");
+            return;
+          }
+
+          if (password.length < 6) {
+            showMessage("Password must be at least 6 characters", "error");
+            return;
+          }
+
+          if (password !== confirmPassword) {
+            showMessage("Passwords do not match", "error");
+            return;
+          }
+
+          if (!document.getElementById("agreeTerms").checked) {
+            showMessage("You must agree to the Terms of Service", "error");
+            return;
+          }
+
+          try {
+            showMessage("Creating account...", "info");
+
+            const response = await fetch(`${API_BASE}/auth/register`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, email, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              showMessage(data.error || "Registration failed", "error");
+              return;
+            }
+
+            // Store tokens
+            localStorage.setItem("accessToken", data.accessToken);
+            localStorage.setItem("refreshToken", data.refreshToken);
+            localStorage.setItem("userData", JSON.stringify(data.user));
+
+            showMessage(
+              "✅ Account created successfully! Redirecting...",
+              "success",
+            );
+
+            setTimeout(() => {
+              window.location.href = "dashboard.html";
+            }, 1500);
+          } catch (error) {
+            showMessage("Registration error: " + error.message, "error");
+          }
+        });
+
+      function showMessage(message, type) {
+        const existingMessage = document.querySelector(".login-message");
+        if (existingMessage) existingMessage.remove();
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `login-message ${type}`;
+        messageDiv.textContent = message;
+
+        messageDiv.style.cssText = `
+                padding: 1rem;
+                border-radius: 8px;
+                margin: 1rem 0;
+                text-align: center;
+                font-weight: bold;
+                transition: all 0.3s ease;
+            `;
+
+        switch (type) {
+          case "error":
+            messageDiv.style.backgroundColor = "rgba(255, 107, 107, 0.2)";
+            messageDiv.style.border = "1px solid #ff6b6b";
+            messageDiv.style.color = "#ff6b6b";
+            break;
+          case "success":
+            messageDiv.style.backgroundColor = "rgba(0, 212, 255, 0.2)";
+            messageDiv.style.border = "1px solid #00d4ff";
+            messageDiv.style.color = "#00d4ff";
+            break;
+          case "info":
+            messageDiv.style.backgroundColor = "rgba(255, 215, 0, 0.2)";
+            messageDiv.style.border = "1px solid #ffd700";
+            messageDiv.style.color = "#ffd700";
+            break;
+        }
+
+        const form = document.getElementById("registerForm");
+        form.parentNode.insertBefore(messageDiv, form);
+      }
+    </script>
+  </body>
+</html>

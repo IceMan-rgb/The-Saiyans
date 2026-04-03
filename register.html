@@ -160,20 +160,36 @@
     <script>
       // Get backend API URL dynamically
       function getAPIBaseURL() {
+        // Check if backend URL is specified in window config
         if (window.BACKEND_API_URL) return window.BACKEND_API_URL;
+
+        // Check localStorage for stored backend URL
         const storedUrl = localStorage.getItem("backendApiUrl");
         if (storedUrl) return storedUrl;
-        if (window.location.hostname === "iceman-rgb.github.io")
-          return "https://saiyans-api.herokuapp.com/api";
+
+        // For localhost development
         if (
           window.location.hostname === "localhost" ||
-          window.location.hostname === "127.0.0.1"
-        )
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname.includes(":3000") ||
+          window.location.hostname.includes(":5500")
+        ) {
           return "http://localhost:3001/api";
+        }
+
+        // For GitHub Pages and other deployed sites
+        if (window.location.hostname === "iceman-rgb.github.io")
+          return "https://saiyans-api.herokuapp.com/api";
+
+        // Default fallback (needs to be configured)
+        console.warn(
+          "⚠️ Backend API URL not configured. Using localhost fallback.",
+        );
         return "http://localhost:3001/api";
       }
 
       const API_BASE = getAPIBaseURL();
+      console.log("📡 API Base URL:", API_BASE);
 
       document
         .getElementById("registerForm")
@@ -225,12 +241,22 @@
 
             if (!response.ok) {
               showMessage(data.error || "Registration failed", "error");
+              console.error("Registration error:", data);
+              return;
+            }
+
+            // Validate received data
+            if (!data.accessToken || !data.user) {
+              showMessage("Invalid server response", "error");
+              console.error("Missing fields in response:", data);
               return;
             }
 
             // Store tokens
             localStorage.setItem("accessToken", data.accessToken);
-            localStorage.setItem("refreshToken", data.refreshToken);
+            if (data.refreshToken) {
+              localStorage.setItem("refreshToken", data.refreshToken);
+            }
             localStorage.setItem("userData", JSON.stringify(data.user));
 
             showMessage(
@@ -242,7 +268,18 @@
               window.location.href = "dashboard.html";
             }, 1500);
           } catch (error) {
-            showMessage("Registration error: " + error.message, "error");
+            console.error("Network/Parse error:", error);
+            if (error instanceof TypeError && error.message.includes("fetch")) {
+              showMessage(
+                "Cannot connect to server. Check if API is running at " +
+                  API_BASE,
+                "error",
+              );
+            } else if (error instanceof SyntaxError) {
+              showMessage("Invalid response from server", "error");
+            } else {
+              showMessage("Registration error: " + error.message, "error");
+            }
           }
         });
 

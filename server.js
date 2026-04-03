@@ -1,5 +1,5 @@
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
+const { Pool } = require("pg");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const cors = require("cors");
@@ -87,82 +87,80 @@ const authLimiter = rateLimit({
 });
 
 // Database setup
-const db = new sqlite3.Database("./saiyans.db", (err) => {
-  if (err) {
-    console.error("Error opening database:", err.message);
-  } else {
-    console.log("Connected to SQLite database.");
-  }
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl:
+    process.env.NODE_ENV === "production"
+      ? { rejectUnauthorized: false }
+      : false,
+});
+
+pool.on("error", (err) => {
+  console.error("Unexpected error on idle client", err);
+});
+
+pool.on("connect", () => {
+  console.log("✓ Connected to PostgreSQL database.");
 });
 
 // Initialize database tables
-db.serialize(() => {
-  // Users table
-  db.run(`CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT UNIQUE NOT NULL,
-    email TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    last_login DATETIME,
-    is_admin BOOLEAN DEFAULT FALSE,
-    profile_picture TEXT,
-    bio TEXT
-  )`);
+const initializeDatabase = async () => {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        username VARCHAR(255) UNIQUE NOT NULL,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_login TIMESTAMP,
+        is_admin BOOLEAN DEFAULT FALSE,
+        profile_picture TEXT,
+        bio TEXT
+      );
+    `);
 
-  // Add columns if they don't exist (for existing databases)
-  db.run(`PRAGMA table_info(users)`, [], (err, rows) => {
-    // This is handled by SQLite's ALTER TABLE approach
-  });
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id),
+        username VARCHAR(255) NOT NULL,
+        text TEXT NOT NULL,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        expires_at TIMESTAMP
+      );
+    `);
 
-  // Create profile_picture column if it doesn't exist
-  db.run(`ALTER TABLE users ADD COLUMN profile_picture TEXT`, (err) => {
-    if (err && !err.message.includes("duplicate column")) {
-      // Column already exists or another error
-    }
-  });
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS quotes (
+        id SERIAL PRIMARY KEY,
+        quote TEXT NOT NULL,
+        character VARCHAR(255) NOT NULL,
+        anime VARCHAR(255) NOT NULL,
+        submitter VARCHAR(255) NOT NULL,
+        user_id INTEGER REFERENCES users(id),
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        approved BOOLEAN DEFAULT FALSE
+      );
+    `);
 
-  // Create bio column if it doesn't exist
-  db.run(`ALTER TABLE users ADD COLUMN bio TEXT`, (err) => {
-    if (err && !err.message.includes("duplicate column")) {
-      // Column already exists or another error
-    }
-  });
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id),
+        refresh_token VARCHAR(500) UNIQUE NOT NULL,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
 
-  // Comments table
-  db.run(`CREATE TABLE IF NOT EXISTS comments (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER,
-    username TEXT NOT NULL,
-    text TEXT NOT NULL,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    expires_at DATETIME,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
+    console.log("✓ Database tables initialized successfully.");
+  } catch (err) {
+    console.error("Error initializing database:", err);
+  }
+};
 
-  // Quotes table
-  db.run(`CREATE TABLE IF NOT EXISTS quotes (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    quote TEXT NOT NULL,
-    character TEXT NOT NULL,
-    anime TEXT NOT NULL,
-    submitter TEXT NOT NULL,
-    user_id INTEGER,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-    approved BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-
-  // Sessions table for refresh tokens
-  db.run(`CREATE TABLE IF NOT EXISTS sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    refresh_token TEXT UNIQUE NOT NULL,
-    expires_at DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES users (id)
-  )`);
-});
+initializeDatabase();
 
 // Middleware to verify JWT tokens
 const authenticateToken = (req, res, next) => {
@@ -221,69 +219,62 @@ app.post("/api/auth/register", authLimiter, async (req, res) => {
 
   try {
     // Check if user already exists
-    db.get(
-      "SELECT id FROM users WHERE username = ? OR email = ?",
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE username = $1 OR email = $2",
       [username, email],
-      async (err, existingUser) => {
-        if (err) {
-          return res.status(500).json({ error: "Database error" });
-        }
-
-        if (existingUser) {
-          return res
-            .status(409)
-            .json({ error: "Username or email already exists" });
-        }
-
-        // Hash password
-        const saltRounds = 12;
-        const passwordHash = await bcrypt.hash(password, saltRounds);
-
-        // Check if this is admin registration (special password)
-        const isAdmin = password === "admin123";
-
-        // Insert new user
-        db.run(
-          "INSERT INTO users (username, email, password_hash, is_admin) VALUES (?, ?, ?, ?)",
-          [username, email, passwordHash, isAdmin ? 1 : 0],
-          function (err) {
-            if (err) {
-              return res.status(500).json({ error: "Failed to create user" });
-            }
-
-            // Generate tokens
-            const user = { id: this.lastID, username, email };
-            const accessToken = jwt.sign(user, JWT_SECRET, {
-              expiresIn: "15m",
-            });
-            const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, {
-              expiresIn: "7d",
-            });
-
-            // Store refresh token
-            const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-            db.run(
-              "INSERT INTO sessions (user_id, refresh_token, expires_at) VALUES (?, ?, ?)",
-              [user.id, refreshToken, expiresAt.toISOString()],
-            );
-
-            res.status(201).json({
-              message: "User created successfully",
-              user: { id: user.id, username, email, is_admin: isAdmin ? 1 : 0 },
-              accessToken,
-              refreshToken,
-            });
-          },
-        );
-      },
     );
+
+    if (existingUser.rows.length > 0) {
+      return res
+        .status(409)
+        .json({ error: "Username or email already exists" });
+    }
+
+    // Hash password
+    const saltRounds = 12;
+    const passwordHash = await bcrypt.hash(password, saltRounds);
+
+    // Check if this is admin registration (special password)
+    const isAdmin = password === "admin123";
+
+    // Insert new user
+    const result = await pool.query(
+      "INSERT INTO users (username, email, password_hash, is_admin) VALUES ($1, $2, $3, $4) RETURNING id",
+      [username, email, passwordHash, isAdmin],
+    );
+
+    const userId = result.rows[0].id;
+    const user = { id: userId, username, email };
+
+    // Generate tokens
+    const accessToken = jwt.sign(user, JWT_SECRET, {
+      expiresIn: "15m",
+    });
+    const refreshToken = jwt.sign({ id: userId }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
+    // Store refresh token
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    await pool.query(
+      "INSERT INTO sessions (user_id, refresh_token, expires_at) VALUES ($1, $2, $3)",
+      [userId, refreshToken, expiresAt.toISOString()],
+    );
+
+    res.status(201).json({
+      message: "User created successfully",
+      user: { id: userId, username, email, is_admin: isAdmin },
+      accessToken,
+      refreshToken,
+    });
   } catch (error) {
+    console.error("Registration error:", error);
     res.status(500).json({ error: "Server error" });
   }
 });
 
 // Login user
-app.post("/api/auth/login", authLimiter, (req, res) => {
+app.post("/api/auth/login", authLimiter, async (req, res) => {
   const { username, password } = req.body;
 
   if (!username || !password) {
@@ -292,158 +283,159 @@ app.post("/api/auth/login", authLimiter, (req, res) => {
       .json({ error: "Username and password are required" });
   }
 
-  db.get(
-    "SELECT * FROM users WHERE username = ? OR email = ?",
-    [username, username],
-    async (err, user) => {
-      if (err) {
-        return res.status(500).json({ error: "Database error" });
-      }
+  try {
+    const result = await pool.query(
+      "SELECT * FROM users WHERE username = $1 OR email = $1",
+      [username],
+    );
 
-      if (!user) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
-      // Check password
-      const isValidPassword = await bcrypt.compare(
-        password,
-        user.password_hash,
-      );
-      if (!isValidPassword) {
-        return res.status(401).json({ error: "Invalid credentials" });
-      }
+    const user = result.rows[0];
 
-      // Update last login
-      db.run("UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?", [
-        user.id,
-      ]);
+    // Check password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash);
+    if (!isValidPassword) {
+      return res.status(401).json({ error: "Invalid credentials" });
+    }
 
-      // Generate tokens
-      const userPayload = {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-      };
-      const accessToken = jwt.sign(userPayload, JWT_SECRET, {
-        expiresIn: "15m",
-      });
-      const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, {
-        expiresIn: "7d",
-      });
+    // Update last login
+    await pool.query(
+      "UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = $1",
+      [user.id],
+    );
 
-      // Store refresh token
-      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-      db.run(
-        "INSERT INTO sessions (user_id, refresh_token, expires_at) VALUES (?, ?, ?)",
-        [user.id, refreshToken, expiresAt.toISOString()],
-      );
+    // Generate tokens
+    const userPayload = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+    };
+    const accessToken = jwt.sign(userPayload, JWT_SECRET, {
+      expiresIn: "15m",
+    });
+    const refreshToken = jwt.sign({ id: user.id }, JWT_SECRET, {
+      expiresIn: "7d",
+    });
 
-      res.json({
-        message: "Login successful",
-        user: userPayload,
-        accessToken,
-        refreshToken,
-      });
-    },
-  );
+    // Store refresh token
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await pool.query(
+      "INSERT INTO sessions (user_id, refresh_token, expires_at) VALUES ($1, $2, $3)",
+      [user.id, refreshToken, expiresAt.toISOString()],
+    );
+
+    res.json({
+      message: "Login successful",
+      user: userPayload,
+      accessToken,
+      refreshToken,
+    });
+  } catch (error) {
+    console.error("Login error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Refresh access token
-app.post("/api/auth/refresh", (req, res) => {
+app.post("/api/auth/refresh", async (req, res) => {
   const { refreshToken } = req.body;
 
   if (!refreshToken) {
     return res.status(401).json({ error: "Refresh token required" });
   }
 
-  // Verify refresh token exists in database
-  db.get(
-    "SELECT * FROM sessions WHERE refresh_token = ? AND expires_at > CURRENT_TIMESTAMP",
-    [refreshToken],
-    (err, session) => {
-      if (err || !session) {
-        return res.status(403).json({ error: "Invalid refresh token" });
-      }
+  try {
+    // Verify refresh token exists in database
+    const sessionResult = await pool.query(
+      "SELECT * FROM sessions WHERE refresh_token = $1 AND expires_at > CURRENT_TIMESTAMP",
+      [refreshToken],
+    );
 
-      // Get user data
-      db.get(
-        "SELECT id, username, email FROM users WHERE id = ?",
-        [session.user_id],
-        (err, user) => {
-          if (err || !user) {
-            return res.status(403).json({ error: "User not found" });
-          }
+    if (sessionResult.rows.length === 0) {
+      return res.status(403).json({ error: "Invalid refresh token" });
+    }
 
-          // Generate new access token
-          const accessToken = jwt.sign(user, JWT_SECRET, { expiresIn: "15m" });
+    const session = sessionResult.rows[0];
 
-          res.json({ accessToken });
-        },
-      );
-    },
-  );
+    // Get user data
+    const userResult = await pool.query(
+      "SELECT id, username, email FROM users WHERE id = $1",
+      [session.user_id],
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(403).json({ error: "User not found" });
+    }
+
+    const user = userResult.rows[0];
+
+    // Generate new access token
+    const accessToken = jwt.sign(user, JWT_SECRET, { expiresIn: "15m" });
+
+    res.json({ accessToken });
+  } catch (error) {
+    console.error("Refresh token error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Logout (invalidate refresh token)
-app.post("/api/auth/logout", authenticateToken, (req, res) => {
+app.post("/api/auth/logout", authenticateToken, async (req, res) => {
   const refreshToken = req.body.refreshToken;
 
   if (refreshToken) {
-    db.run("DELETE FROM sessions WHERE refresh_token = ?", [refreshToken]);
+    try {
+      await pool.query("DELETE FROM sessions WHERE refresh_token = $1", [
+        refreshToken,
+      ]);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   }
 
   res.json({ message: "Logged out successfully" });
 });
 
 // Get current user profile
-app.get("/api/auth/profile", authenticateToken, (req, res) => {
-  db.get(
-    "SELECT id, username, email, created_at, last_login, is_admin, profile_picture, bio FROM users WHERE id = ?",
-    [req.user.id],
-    (err, user) => {
-      if (err) {
-        return res.status(500).json({ error: "Database error" });
-      }
+app.get("/api/auth/profile", authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT id, username, email, created_at, last_login, is_admin, profile_picture, bio FROM users WHERE id = $1",
+      [req.user.id],
+    );
 
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
-      }
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
 
-      res.json({ user });
-    },
-  );
+    res.json({ user: result.rows[0] });
+  } catch (error) {
+    console.error("Profile fetch error:", error);
+    res.status(500).json({ error: "Server error" });
+  }
 });
 
 // Upload profile picture
-app.post("/api/auth/profile/picture", authenticateToken, (req, res) => {
+app.post("/api/auth/profile/picture", authenticateToken, async (req, res) => {
   try {
-    // Handle base64 image data
     const fileData = req.body.profilePicture;
 
     if (!fileData) {
       return res.status(400).json({ error: "No image data provided" });
     }
 
-    // Store base64 data or file URL
-    // For this implementation, we'll store the base64 data directly in the database
-    // In production, you'd want to store files in cloud storage
+    await pool.query("UPDATE users SET profile_picture = $1 WHERE id = $2", [
+      fileData,
+      req.user.id,
+    ]);
 
-    db.run(
-      "UPDATE users SET profile_picture = ? WHERE id = ?",
-      [fileData, req.user.id],
-      function (err) {
-        if (err) {
-          return res
-            .status(500)
-            .json({ error: "Failed to update profile picture" });
-        }
-
-        res.json({
-          message: "Profile picture updated successfully",
-          profile_picture: fileData,
-        });
-      },
-    );
+    res.json({
+      message: "Profile picture updated successfully",
+      profile_picture: fileData,
+    });
   } catch (error) {
     console.error("Error uploading profile picture:", error);
     res.status(500).json({ error: "Failed to process upload" });
@@ -451,53 +443,50 @@ app.post("/api/auth/profile/picture", authenticateToken, (req, res) => {
 });
 
 // Update user profile
-app.put("/api/auth/profile", authenticateToken, (req, res) => {
+app.put("/api/auth/profile", authenticateToken, async (req, res) => {
   const { bio } = req.body;
 
-  db.run(
-    "UPDATE users SET bio = ? WHERE id = ?",
-    [bio || "", req.user.id],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Failed to update profile" });
-      }
+  try {
+    await pool.query("UPDATE users SET bio = $1 WHERE id = $2", [
+      bio || "",
+      req.user.id,
+    ]);
 
-      res.json({ message: "Profile updated successfully" });
-    },
-  );
+    res.json({ message: "Profile updated successfully" });
+  } catch (error) {
+    console.error("Profile update error:", error);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
 });
 
-// COMMENTS ROUTES
-
 // Get all comments
-app.get("/api/comments", optionalAuth, (req, res) => {
+app.get("/api/comments", optionalAuth, async (req, res) => {
   const limit = parseInt(req.query.limit) || 50;
   const offset = parseInt(req.query.offset) || 0;
 
-  db.all(
-    `
-    SELECT c.id, c.user_id, c.username, c.text, c.timestamp, c.expires_at,
-           u.profile_picture, u.bio
-    FROM comments c
-    LEFT JOIN users u ON c.user_id = u.id
-    WHERE c.expires_at > CURRENT_TIMESTAMP OR c.expires_at IS NULL
-    ORDER BY c.timestamp DESC
-    LIMIT ? OFFSET ?
-  `,
-    [limit, offset],
-    (err, comments) => {
-      if (err) {
-        console.error("Database error:", err);
-        return res.status(500).json({ error: "Database error" });
-      }
+  try {
+    const result = await pool.query(
+      `
+      SELECT c.id, c.user_id, c.username, c.text, c.timestamp, c.expires_at,
+             u.profile_picture, u.bio
+      FROM comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.expires_at > CURRENT_TIMESTAMP OR c.expires_at IS NULL
+      ORDER BY c.timestamp DESC
+      LIMIT $1 OFFSET $2
+    `,
+      [limit, offset],
+    );
 
-      res.json({ comments: comments || [] });
-    },
-  );
+    res.json({ comments: result.rows || [] });
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 // Create new comment
-app.post("/api/comments", optionalAuth, (req, res) => {
+app.post("/api/comments", optionalAuth, async (req, res) => {
   const { text } = req.body;
   const userId = req.user ? req.user.id : null;
   const username = req.user ? req.user.username : req.body.username;
@@ -515,57 +504,58 @@ app.post("/api/comments", optionalAuth, (req, res) => {
   // Set expiration (5 days from now)
   const expiresAt = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
 
-  db.run(
-    `
-    INSERT INTO comments (user_id, username, text, expires_at)
-    VALUES (?, ?, ?, ?)
-  `,
-    [userId, username, text, expiresAt.toISOString()],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Failed to save comment" });
-      }
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO comments (user_id, username, text, expires_at)
+      VALUES ($1, $2, $3, $4)
+      RETURNING id
+    `,
+      [userId, username, text, expiresAt.toISOString()],
+    );
 
-      res.status(201).json({
-        message: "Comment posted successfully",
-        comment: {
-          id: this.lastID,
-          user_id: userId,
-          username,
-          text,
-          timestamp: new Date().toISOString(),
-        },
-      });
-    },
-  );
+    res.status(201).json({
+      message: "Comment posted successfully",
+      comment: {
+        id: result.rows[0].id,
+        user_id: userId,
+        username,
+        text,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Comment creation error:", error);
+    res.status(500).json({ error: "Failed to save comment" });
+  }
 });
 
 // QUOTES ROUTES
 
 // Get approved quotes
-app.get("/api/quotes", (req, res) => {
+app.get("/api/quotes", async (req, res) => {
   const category = req.query.category;
-  let query = "SELECT * FROM quotes WHERE approved = 1";
+  let query = "SELECT * FROM quotes WHERE approved = true";
   let params = [];
 
   if (category && category !== "all") {
-    query += " AND anime = ?";
+    query += " AND anime = $1";
     params.push(category);
   }
 
   query += " ORDER BY timestamp DESC";
 
-  db.all(query, params, (err, quotes) => {
-    if (err) {
-      return res.status(500).json({ error: "Database error" });
-    }
-
-    res.json({ quotes });
-  });
+  try {
+    const result = await pool.query(query, params);
+    res.json({ quotes: result.rows });
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 // Submit new quote
-app.post("/api/quotes", optionalAuth, (req, res) => {
+app.post("/api/quotes", optionalAuth, async (req, res) => {
   const { quote, character, anime, submitter } = req.body;
   const userId = req.user ? req.user.id : null;
 
@@ -579,116 +569,116 @@ app.post("/api/quotes", optionalAuth, (req, res) => {
       .json({ error: "Quote too long (max 500 characters)" });
   }
 
-  db.run(
-    `
-    INSERT INTO quotes (quote, character, anime, submitter, user_id)
-    VALUES (?, ?, ?, ?, ?)
-  `,
-    [quote, character, anime, submitter, userId],
-    function (err) {
-      if (err) {
-        return res.status(500).json({ error: "Failed to submit quote" });
-      }
+  try {
+    const result = await pool.query(
+      `
+      INSERT INTO quotes (quote, character, anime, submitter, user_id)
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING id
+    `,
+      [quote, character, anime, submitter, userId],
+    );
 
-      res.status(201).json({
-        message:
-          "Quote submitted successfully! It will be reviewed by our team.",
-        quote: {
-          id: this.lastID,
-          quote,
-          character,
-          anime,
-          submitter,
-          timestamp: new Date().toISOString(),
-        },
-      });
-    },
-  );
+    res.status(201).json({
+      message: "Quote submitted successfully! It will be reviewed by our team.",
+      quote: {
+        id: result.rows[0].id,
+        quote,
+        character,
+        anime,
+        submitter,
+        timestamp: new Date().toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error("Quote submission error:", error);
+    res.status(500).json({ error: "Failed to submit quote" });
+  }
 });
 
 // Get pending quotes (admin only)
-app.get("/api/quotes/pending", authenticateToken, (req, res) => {
-  // Check if user is admin
-  db.get(
-    "SELECT is_admin FROM users WHERE id = ?",
-    [req.user.id],
-    (err, user) => {
-      if (err || !user || !user.is_admin) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
+app.get("/api/quotes/pending", authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    const userResult = await pool.query(
+      "SELECT is_admin FROM users WHERE id = $1",
+      [req.user.id],
+    );
 
-      db.all(
-        "SELECT * FROM quotes WHERE approved = 0 ORDER BY timestamp DESC",
-        (err, quotes) => {
-          if (err) {
-            return res.status(500).json({ error: "Database error" });
-          }
+    if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
 
-          res.json({ quotes });
-        },
-      );
-    },
-  );
+    const quotesResult = await pool.query(
+      "SELECT * FROM quotes WHERE approved = false ORDER BY timestamp DESC",
+    );
+
+    res.json({ quotes: quotesResult.rows });
+  } catch (error) {
+    console.error("Database error:", error);
+    res.status(500).json({ error: "Database error" });
+  }
 });
 
 // Approve quote (admin only)
-app.put("/api/quotes/:id/approve", authenticateToken, (req, res) => {
+app.put("/api/quotes/:id/approve", authenticateToken, async (req, res) => {
   const quoteId = req.params.id;
 
-  // Check if user is admin
-  db.get(
-    "SELECT is_admin FROM users WHERE id = ?",
-    [req.user.id],
-    (err, user) => {
-      if (err || !user || !user.is_admin) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
+  try {
+    // Check if user is admin
+    const userResult = await pool.query(
+      "SELECT is_admin FROM users WHERE id = $1",
+      [req.user.id],
+    );
 
-      db.run(
-        "UPDATE quotes SET approved = 1 WHERE id = ?",
-        [quoteId],
-        function (err) {
-          if (err) {
-            return res.status(500).json({ error: "Failed to approve quote" });
-          }
+    if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
 
-          if (this.changes === 0) {
-            return res.status(404).json({ error: "Quote not found" });
-          }
+    const updateResult = await pool.query(
+      "UPDATE quotes SET approved = true WHERE id = $1",
+      [quoteId],
+    );
 
-          res.json({ message: "Quote approved successfully" });
-        },
-      );
-    },
-  );
+    if (updateResult.rowCount === 0) {
+      return res.status(404).json({ error: "Quote not found" });
+    }
+
+    res.json({ message: "Quote approved successfully" });
+  } catch (error) {
+    console.error("Quote approval error:", error);
+    res.status(500).json({ error: "Failed to approve quote" });
+  }
 });
 
 // Delete quote (admin only)
-app.delete("/api/quotes/:id", authenticateToken, (req, res) => {
+app.delete("/api/quotes/:id", authenticateToken, async (req, res) => {
   const quoteId = req.params.id;
 
-  // Check if user is admin
-  db.get(
-    "SELECT is_admin FROM users WHERE id = ?",
-    [req.user.id],
-    (err, user) => {
-      if (err || !user || !user.is_admin) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
+  try {
+    // Check if user is admin
+    const userResult = await pool.query(
+      "SELECT is_admin FROM users WHERE id = $1",
+      [req.user.id],
+    );
 
-      db.run("DELETE FROM quotes WHERE id = ?", [quoteId], function (err) {
-        if (err) {
-          return res.status(500).json({ error: "Failed to delete quote" });
-        }
+    if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
 
-        if (this.changes === 0) {
-          return res.status(404).json({ error: "Quote not found" });
-        }
+    const deleteResult = await pool.query("DELETE FROM quotes WHERE id = $1", [
+      quoteId,
+    ]);
 
-        res.json({ message: "Quote deleted successfully" });
-      });
-    },
-  );
+    if (deleteResult.rowCount === 0) {
+      return res.status(404).json({ error: "Quote not found" });
+    }
+
+    res.json({ message: "Quote deleted successfully" });
+  } catch (error) {
+    console.error("Quote deletion error:", error);
+    res.status(500).json({ error: "Failed to delete quote" });
+  }
 });
 
 // UTILITY ROUTES
@@ -703,69 +693,58 @@ app.get("/api/health", (req, res) => {
 });
 
 // Get server stats
-app.get("/api/stats", (req, res) => {
-  const stats = {};
-
-  // Get user count
-  db.get("SELECT COUNT(*) as count FROM users", (err, result) => {
-    if (!err) stats.users = result.count;
-
-    // Get comment count
-    db.get(
+app.get("/api/stats", async (req, res) => {
+  try {
+    const userCount = await pool.query("SELECT COUNT(*) as count FROM users");
+    const commentCount = await pool.query(
       "SELECT COUNT(*) as count FROM comments WHERE expires_at > CURRENT_TIMESTAMP",
-      (err, result) => {
-        if (!err) stats.comments = result.count;
-
-        // Get quote count
-        db.get(
-          "SELECT COUNT(*) as count FROM quotes WHERE approved = 1",
-          (err, result) => {
-            if (!err) stats.quotes = result.count;
-
-            res.json(stats);
-          },
-        );
-      },
     );
-  });
+    const quoteCount = await pool.query(
+      "SELECT COUNT(*) as count FROM quotes WHERE approved = true",
+    );
+
+    res.json({
+      users: parseInt(userCount.rows[0].count),
+      comments: parseInt(commentCount.rows[0].count),
+      quotes: parseInt(quoteCount.rows[0].count),
+    });
+  } catch (error) {
+    console.error("Stats error:", error);
+    res.status(500).json({ error: "Failed to fetch stats" });
+  }
 });
 
 // Admin stats (requires authentication and admin role)
-app.get("/api/admin/stats", authenticateToken, (req, res) => {
-  // Check if user is admin
-  db.get(
-    "SELECT is_admin FROM users WHERE id = ?",
-    [req.user.id],
-    (err, user) => {
-      if (err || !user || !user.is_admin) {
-        return res.status(403).json({ error: "Admin access required" });
-      }
+app.get("/api/admin/stats", authenticateToken, async (req, res) => {
+  try {
+    // Check if user is admin
+    const userResult = await pool.query(
+      "SELECT is_admin FROM users WHERE id = $1",
+      [req.user.id],
+    );
 
-      const stats = {};
+    if (userResult.rows.length === 0 || !userResult.rows[0].is_admin) {
+      return res.status(403).json({ error: "Admin access required" });
+    }
 
-      // Get total registered users
-      db.get("SELECT COUNT(*) as count FROM users", (err, result) => {
-        if (!err) stats.totalUsers = result.count;
+    const userCount = await pool.query("SELECT COUNT(*) as count FROM users");
+    const pendingQuotes = await pool.query(
+      "SELECT COUNT(*) as count FROM quotes WHERE approved = false",
+    );
 
-        // Get currently online users from WebSocket activeUsers
-        stats.onlineUsers = realtime.activeUsers.size;
-
-        // Get pending quotes count
-        db.get(
-          "SELECT COUNT(*) as count FROM quotes WHERE approved = 0",
-          (err, result) => {
-            if (!err) stats.pendingQuotes = result.count;
-
-            res.json(stats);
-          },
-        );
-      });
-    },
-  );
+    res.json({
+      totalUsers: parseInt(userCount.rows[0].count),
+      onlineUsers: realtime.activeUsers.size,
+      pendingQuotes: parseInt(pendingQuotes.rows[0].count),
+    });
+  } catch (error) {
+    console.error("Admin stats error:", error);
+    res.status(500).json({ error: "Failed to fetch admin stats" });
+  }
 });
 
 // Get online users list
-app.get("/api/users/status/online", (req, res) => {
+app.get("/api/users/status/online", async (req, res) => {
   try {
     // Get list of online user IDs from WebSocket
     const onlineUserIds = Array.from(realtime.activeUsers.keys());
@@ -775,18 +754,13 @@ app.get("/api/users/status/online", (req, res) => {
     }
 
     // Fetch user details from database
-    const placeholders = onlineUserIds.map(() => "?").join(",");
-    db.all(
+    const placeholders = onlineUserIds.map((_, i) => `$${i + 1}`).join(",");
+    const result = await pool.query(
       `SELECT id, username, profile_picture FROM users WHERE id IN (${placeholders})`,
       onlineUserIds,
-      (err, users) => {
-        if (err) {
-          return res.status(500).json({ error: "Database error" });
-        }
-
-        res.json({ users: users || [] });
-      },
     );
+
+    res.json({ users: result.rows || [] });
   } catch (error) {
     console.error("Error fetching online users:", error);
     res.status(500).json({ error: "Failed to fetch online users" });
@@ -805,16 +779,15 @@ app.use((req, res) => {
 });
 
 // Graceful shutdown
-process.on("SIGINT", () => {
+process.on("SIGINT", async () => {
   console.log("Shutting down gracefully...");
-  db.close((err) => {
-    if (err) {
-      console.error("Error closing database:", err.message);
-    } else {
-      console.log("Database connection closed.");
-    }
-    process.exit(0);
-  });
+  try {
+    await pool.end();
+    console.log("Database connection pool closed.");
+  } catch (err) {
+    console.error("Error closing database pool:", err);
+  }
+  process.exit(0);
 });
 
 // Start HTTP server

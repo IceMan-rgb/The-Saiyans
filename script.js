@@ -372,33 +372,49 @@ document.head.appendChild(styleSheet);
 // ===== API CONFIGURATION =====
 // Dynamically determine API base URL based on environment
 function getAPIBaseURL() {
-  // Check if backend URL is specified in window config (from HTML data attribute)
+  // Check if backend URL is specified in window config
   if (window.BACKEND_API_URL) {
+    console.log("✓ Using window.BACKEND_API_URL:", window.BACKEND_API_URL);
     return window.BACKEND_API_URL;
   }
 
-  // Check environment variable in localStorage (for production config)
+  // Check localStorage for stored backend URL (user can set this)
   const storedApiUrl = localStorage.getItem("backendApiUrl");
   if (storedApiUrl) {
+    console.log("✓ Using stored backendApiUrl:", storedApiUrl);
     return storedApiUrl;
-  }
-
-  // For production deployed to GitHub Pages, use environment-specific URL
-  if (window.location.hostname === "iceman-rgb.github.io") {
-    // Change this to your deployed backend URL
-    return "https://saiyans-api.herokuapp.com/api"; // Example: Heroku deployment
   }
 
   // For localhost development
   if (
     window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1"
+    window.location.hostname === "127.0.0.1" ||
+    window.location.hostname === "127.0.0.1:5500" ||
+    window.location.hostname.includes(":3000")
   ) {
-    return "http://localhost:3001/api";
+    const url = "http://localhost:3001/api";
+    console.log("✓ Using localhost API:", url);
+    return url;
   }
 
-  // Fallback to localhost for other cases
-  return "http://localhost:3001/api";
+  // For GitHub Pages and other deployments
+  // Try to determine if backend is on same domain or needs custom config
+  const protocol = window.location.protocol; // http: or https:
+  const hostname = window.location.hostname;
+
+  // Check if there's a /api endpoint on the same domain
+  const sameOriginUrl = `${protocol}//${hostname}:3001/api`;
+  console.log(
+    "⚠️ Deployed environment detected. Configure backend URL:",
+    "1. Set window.BACKEND_API_URL in your HTML",
+    "2. Or save to localStorage: localStorage.setItem('backendApiUrl', 'YOUR_BACKEND_URL/api')",
+    "3. Backend needs CORS configured to allow",
+    `requests from ${protocol}//${hostname}`,
+  );
+
+  // Try same domain with port 3001 first
+  console.log("Attempting:", sameOriginUrl);
+  return sameOriginUrl;
 }
 
 const API_BASE_URL = getAPIBaseURL();
@@ -421,6 +437,7 @@ async function apiRequest(endpoint, options = {}) {
   }
 
   try {
+    console.log("📡 API Request:", options.method || "GET", url);
     const response = await fetch(url, config);
 
     // Handle token refresh on 401
@@ -437,12 +454,24 @@ async function apiRequest(endpoint, options = {}) {
       const error = await response
         .json()
         .catch(() => ({ error: "Network error" }));
-      throw new Error(error.error || `HTTP ${response.status}`);
+      const errorMsg = error.error || `HTTP ${response.status}`;
+      console.error(
+        "❌ API Request failed:",
+        errorMsg,
+        "Status:",
+        response.status,
+      );
+      throw new Error(errorMsg);
     }
 
+    console.log("✓ API Request successful:", options.method || "GET", endpoint);
     return await response.json();
   } catch (error) {
-    console.error("API Request failed:", error);
+    console.error("❌ API Request Error:", error.message);
+    console.error("📍 Attempted URL:", url);
+    console.error(
+      "💡 Configure backend URL: localStorage.setItem('backendApiUrl', 'YOUR_API_URL/api')",
+    );
     throw error;
   }
 }
@@ -743,7 +772,18 @@ document.addEventListener("DOMContentLoaded", function () {
           window.location.href = "user-dashboard.html";
         }, 1500);
       } catch (error) {
-        showLoginMessage(error.message || "Login failed", "error");
+        console.error("Login error:", error);
+        let errorMsg = error.message || "Login failed";
+        if (
+          error.message.includes("Failed to fetch") ||
+          error.message.includes("Network")
+        ) {
+          errorMsg = `Connection Error: Cannot reach API. Please check:
+1. Backend server is running at the configured URL
+2. CORS is properly configured on backend
+3. To set API URL: localStorage.setItem('backendApiUrl', 'YOUR_BACKEND_URL/api')`;
+        }
+        showLoginMessage(errorMsg, "error");
       }
     });
   }

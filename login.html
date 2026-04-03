@@ -183,5 +183,173 @@
       </p>
       <p class="footer-credit">Made by Prince(Eminence) 👨‍💻</p>
     </footer>
+
+    <script>
+      // Get backend API URL dynamically
+      function getAPIBaseURL() {
+        // Check if backend URL is specified in window config
+        if (window.BACKEND_API_URL) return window.BACKEND_API_URL;
+
+        // Check localStorage for stored backend URL
+        const storedUrl = localStorage.getItem("backendApiUrl");
+        if (storedUrl) return storedUrl;
+
+        // For localhost development
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1" ||
+          window.location.hostname.includes(":3000") ||
+          window.location.hostname.includes(":5500")
+        ) {
+          return "http://localhost:3001/api";
+        }
+
+        // For GitHub Pages and other deployed sites
+        if (window.location.hostname === "iceman-rgb.github.io")
+          return "https://saiyans-api.herokuapp.com/api";
+
+        // Default fallback
+        console.warn(
+          "⚠️ Backend API URL not configured. Using localhost fallback.",
+        );
+        return "http://localhost:3001/api";
+      }
+
+      const API_BASE = getAPIBaseURL();
+      console.log("📡 API Base URL:", API_BASE);
+
+      document
+        .getElementById("login-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          const username = document.getElementById("username").value.trim();
+          const password = document.getElementById("password").value;
+          const rememberMe = document.getElementById("rememberMe").checked;
+
+          // Validation
+          if (!username) {
+            showMessage("Please enter username or email", "error");
+            return;
+          }
+
+          if (!password) {
+            showMessage("Please enter your password", "error");
+            return;
+          }
+
+          try {
+            showMessage("Logging in...", "info");
+
+            const response = await fetch(`${API_BASE}/auth/login`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ username, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              showMessage(data.error || "Login failed", "error");
+              console.error("Login error:", data);
+              return;
+            }
+
+            // Validate received data
+            if (!data.accessToken || !data.user) {
+              showMessage("Invalid server response", "error");
+              console.error("Missing fields in response:", data);
+              return;
+            }
+
+            // Store tokens
+            localStorage.setItem("accessToken", data.accessToken);
+            if (data.refreshToken) {
+              localStorage.setItem("refreshToken", data.refreshToken);
+            }
+            localStorage.setItem("userData", JSON.stringify(data.user));
+
+            if (rememberMe) {
+              localStorage.setItem("rememberMe", "true");
+              localStorage.setItem("lastUsername", username);
+            }
+
+            showMessage("✅ Login successful! Redirecting...", "success");
+
+            setTimeout(() => {
+              window.location.href = "dashboard.html";
+            }, 1500);
+          } catch (error) {
+            console.error("Network/Parse error:", error);
+            if (error instanceof TypeError && error.message.includes("fetch")) {
+              showMessage(
+                "Cannot connect to server. Check if API is running at " +
+                  API_BASE,
+                "error",
+              );
+            } else if (error instanceof SyntaxError) {
+              showMessage("Invalid response from server", "error");
+            } else {
+              showMessage("Login error: " + error.message, "error");
+            }
+          }
+        });
+
+      // Update signup link
+      document.querySelector(".signup-link").addEventListener("click", (e) => {
+        e.preventDefault();
+        window.location.href = "register.html";
+      });
+
+      function showMessage(message, type) {
+        const existingMessage = document.querySelector(".login-message");
+        if (existingMessage) existingMessage.remove();
+
+        const messageDiv = document.createElement("div");
+        messageDiv.className = `login-message ${type}`;
+        messageDiv.textContent = message;
+
+        messageDiv.style.cssText = `
+          padding: 1rem;
+          border-radius: 8px;
+          margin: 1rem 0;
+          text-align: center;
+          font-weight: bold;
+          transition: all 0.3s ease;
+        `;
+
+        switch (type) {
+          case "error":
+            messageDiv.style.backgroundColor = "rgba(255, 107, 107, 0.2)";
+            messageDiv.style.border = "1px solid #ff6b6b";
+            messageDiv.style.color = "#ff6b6b";
+            break;
+          case "success":
+            messageDiv.style.backgroundColor = "rgba(0, 212, 255, 0.2)";
+            messageDiv.style.border = "1px solid #00d4ff";
+            messageDiv.style.color = "#00d4ff";
+            break;
+          case "info":
+            messageDiv.style.backgroundColor = "rgba(255, 215, 0, 0.2)";
+            messageDiv.style.border = "1px solid #ffd700";
+            messageDiv.style.color = "#ffd700";
+            break;
+        }
+
+        const form = document.getElementById("login-form");
+        form.parentNode.insertBefore(messageDiv, form);
+      }
+
+      // Restore username if "Remember me" was checked
+      window.addEventListener("DOMContentLoaded", () => {
+        if (localStorage.getItem("rememberMe") === "true") {
+          const lastUsername = localStorage.getItem("lastUsername");
+          if (lastUsername) {
+            document.getElementById("username").value = lastUsername;
+            document.getElementById("rememberMe").checked = true;
+          }
+        }
+      });
+    </script>
   </body>
 </html>

@@ -17,7 +17,12 @@ const JWT_SECRET =
   "your-super-secret-jwt-key-change-this-in-production";
 
 // Middleware
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Disable CSP since we're using CORS for security
+    crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow cross-origin resources
+  }),
+);
 
 // CORS Configuration - Support for production environments
 const corsOptions = {

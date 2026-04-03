@@ -691,7 +691,7 @@
         const storedUrl = localStorage.getItem("backendApiUrl");
         if (storedUrl) return storedUrl;
         if (window.location.hostname === "iceman-rgb.github.io")
-          return "https://saiyans-api.herokuapp.com/api";
+          return "https://the-saiyans-1.onrender.com/api";
         if (
           window.location.hostname === "localhost" ||
           window.location.hostname === "127.0.0.1"
@@ -705,7 +705,7 @@
         const storedUrl = localStorage.getItem("backendWsUrl");
         if (storedUrl) return storedUrl;
         if (window.location.hostname === "iceman-rgb.github.io")
-          return "wss://saiyans-api.herokuapp.com";
+          return "wss://the-saiyans-1.onrender.com";
         if (
           window.location.hostname === "localhost" ||
           window.location.hostname === "127.0.0.1"

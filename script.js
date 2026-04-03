@@ -397,7 +397,14 @@ function getAPIBaseURL() {
     return url;
   }
 
-  // For GitHub Pages and other deployments
+  // For GitHub Pages and other deployed sites
+  if (window.location.hostname === "iceman-rgb.github.io") {
+    const url = "https://the-saiyans-2.onrender.com/api";
+    console.log("✓ Using production backend:", url);
+    return url;
+  }
+
+  // For other deployments
   // Try to determine if backend is on same domain or needs custom config
   const protocol = window.location.protocol; // http: or https:
   const hostname = window.location.hostname;
